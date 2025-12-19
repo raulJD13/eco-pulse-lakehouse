@@ -1,0 +1,12 @@
+pyspark==3.5.0
+delta-spark==3.0.0
+kafka-python-ng
+pandas
+streamlit
+pydeck
+altair
+deltalake
+python-dotenv
+requests
+boto3
+watchdog

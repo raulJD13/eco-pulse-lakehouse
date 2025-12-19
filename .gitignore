@@ -1,0 +1,17 @@
+# Seguridad (Claves API)
+.env
+
+# Entorno Virtual y Temporales
+venv/
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+
+# Datos Locales (No subir el Data Lake a GitHub, pesa mucho)
+data/
+spark-warehouse/
+metastore_db/
+*.log
+
+# Sistema Operativo
+.DS_Store
