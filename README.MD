@@ -88,36 +88,14 @@ The project follows the **Medallion Architecture** (Bronze, Silver, Gold) within
 
 ##  Technology Stack
 
-###  Ingestion
-
-* Python
-* Apache Kafka
-* Zookeeper
-
-###  Processing
-
-* Apache Spark (PySpark)
-* Structured Streaming
-
-### Storage
-
-* Delta Lake
-* MinIO (S3-compatible object storage)
-
-###  Infrastructure & Orchestration
-
-* Docker
-* Docker Compose
-
-###  Visualization
-
-* Streamlit
-* PyDeck (3D geospatial rendering)
-* Altair
-
-###  Language
-
-* Python **3.12**
+| Layer / Purpose              | Technologies                                                                 |
+|-----------------------------|------------------------------------------------------------------------------|
+| **Ingestion**               | Python, Apache Kafka, Zookeeper                                               |
+| **Processing**              | Apache Spark (PySpark), Structured Streaming                                  |
+| **Storage**                 | Delta Lake, MinIO (S3-compatible object storage)                               |
+| **Infrastructure & Orchestration** | Docker, Docker Compose                                                 |
+| **Visualization**           | Streamlit, PyDeck (3D geospatial rendering), Altair                            |
+| **Language**                | Python **3.12**                                                               |
 
 ---
 
