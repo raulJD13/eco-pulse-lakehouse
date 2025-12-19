@@ -1,257 +1,318 @@
+#  Eco-Pulse Lakehouse
+
+## Real-Time Wildfire Risk Monitoring System
+
+**Author:** Raúl Jiménez Delgado
+**Contact:** [raul.jimenez.del@gmail.com](mailto:raul.jimenez.del@gmail.com)
+**LinkedIn:** [linkedin.com/in/rauljimenezdelgado](https://linkedin.com/in/rauljimenezdelgado)
+
+---
+
+##  Project Overview
+
+**Eco-Pulse Lakehouse** is an end-to-end **distributed data engineering system** designed to monitor **wildfire risk in real time**. The platform ingests **satellite fire telemetry** and **IoT-based weather sensor data** to assess evacuation and operational risks for **critical infrastructure**, such as tourism operations in the **Canary Islands**.
+
+The solution is built on a **Lakehouse architecture with Lambda-style processing**, ensuring:
+
+* ACID-compliant data management
+* Horizontal scalability
+* Reliable historical data retention
+
+A core component of the system is the automated correlation of **active fire fronts** with **meteorological conditions**, applying the **30-30-30 Rule**:
+
+> *  Wind speed > **30 km/h**
+> *  Temperature > **30 °C**
+> *  Relative humidity < **30%**
+
+These parameters are used to classify wildfire risk levels dynamically.
+
+---
+
+##  Business Case
+
+Decision-making in high-risk wildfire zones requires **low-latency, real-time intelligence**. Traditional BI and reporting systems often fail to correlate **heterogeneous data sources**—such as satellite imagery and localized weather stations—quickly enough to support emergency response.
+
+###  Objective
+
+Reduce emergency response time by providing a **live geospatial dashboard** that:
+
+* Visualizes active fire events
+* Calculates fire spread potential
+* Incorporates wind direction and intensity in real time
+
+---
+
+##  System Architecture
+
+The project follows the **Medallion Architecture** (Bronze, Silver, Gold) within a **Data Lakehouse** paradigm.
+
+### Data Layer Definitions
+
+####  Bronze Layer — *Raw Data*
+
+* Ingests raw JSON payloads from:
+
+  * **NASA FIRMS** (VIIRS / MODIS satellites)
+  * **OpenWeatherMap API**
+* Data is streamed via **Apache Kafka**
+* Stored in raw format for:
+
+  * Auditability
+  * Replayability
+
+---
+
+####  Silver Layer — *Cleansed & Enriched*
+
+* Processed using **Apache Spark Structured Streaming**
+* Key transformations:
+
+  * Deduplication
+  * Schema enforcement
+  * Type casting (coordinates → Float, timestamps → Datetime)
+  * Time and spatial partitioning
+* Persisted using **Delta Lake** for transactional guarantees
+
+---
+
+####  Gold Layer — *Business Aggregations*
+
+* Batch-processed analytical tables
+* Performs:
+
+  * Geospatial joins between fire events and weather stations
+  * Risk classification using the **30-30-30 logic**
+* Optimized for downstream analytics and visualization
+
+---
+
+##  Technology Stack
+
+###  Ingestion
+
+* Python
+* Apache Kafka
+* Zookeeper
+
+###  Processing
+
+* Apache Spark (PySpark)
+* Structured Streaming
+
+### Storage
+
+* Delta Lake
+* MinIO (S3-compatible object storage)
+
+###  Infrastructure & Orchestration
+
+* Docker
+* Docker Compose
+
+###  Visualization
+
+* Streamlit
+* PyDeck (3D geospatial rendering)
+* Altair
+
+###  Language
+
+* Python **3.12**
+
+---
+
+##  Project Structure
+
+```text
 eco-pulse-lakehouse/
 │
-├── config/                 # Configuraciones (YAMLs, JSONs)
-│   └── spark_config.conf   # Configs de Spark (memoria, cores)
+├── config/                 # Spark and system configuration
+│   └── spark_config.conf
 │
-├── data/                   # Datos locales (solo para pruebas, ignorado en git)
-│   ├── gold/
-│   └── silver/
-│   └── bronze/
+├── data/                   # Local Lakehouse storage (gitignored)
+│   ├── bronze/
+│   ├── silver/
+│   └── gold/
 │
-├── docker/                 # Dockerfiles personalizados (si los necesitamos)
+├── docker/                 # Custom Docker images
 │
-├── notebooks/              # Jupyter Notebooks para experimentación (EDA)
+├── notebooks/              # EDA and API exploration
 │   └── 01_explore_nasa_api.ipynb
 │
-├── src/                    # CÓDIGO FUENTE PRINCIPAL
-│   ├── __init__.py
-│   ├── ingestion/          # Scripts del Producer (Python + Kafka)
-│   │   └── nasa_producer.py
-│   ├── processing/         # Scripts de Spark (Streaming + Batch)
-│   │   └── fire_risk_processor.py
-│   ├── utils/              # Funciones auxiliares (loggers, connectores)
+├── src/                    # Application source code
+│   ├── ingestion/          # Kafka producers
+│   │   ├── nasa_producer.py
+│   │   └── weather_producer.py
+│   ├── processing/         # Spark streaming and batch jobs
+│   │   ├── fire_risk_processor.py
+│   │   └── gold_batch_job.py
+│   ├── utils/              # Spark helpers and utilities
 │   │   └── spark_utils.py
-│   └── visualization/      # Streamlit App
+│   └── visualization/      # Streamlit dashboard
 │       └── app.py
 │
-├── .env                    # VARIABLES DE ENTORNO (API KEYS - ¡Nunca al git!)
-├── .gitignore              # Archivos a ignorar
-├── docker-compose.yml      # La infraestructura completa
-├── README.md               # Documentación del proyecto
-└── requirements.txt        # Dependencias de Python
+├── .env                    # Environment variables (API keys)
+├── .gitignore
+├── docker-compose.yml      # Infrastructure definition
+├── requirements.txt        # Python dependencies
+└── README.md
+```
 
+---
 
-🌍 PROYECTO: Eco-Pulse Lakehouse
+##  Data Pipeline Flow
 
-Tagline: Sistema de monitorización de incendios forestales en tiempo real y arquitectura Lakehouse distribuida.
+### 1️ Data Ingestion
 
-1. ¿De qué trata realmente? (El Negocio)
+* Python producers query:
 
-Imagina que eres el Responsable de Operaciones de TUI en Canarias.
+  * NASA FIRMS (fire events)
+  * OpenWeatherMap (weather telemetry)
+* Events are serialized and published to Kafka topics:
 
-Tienes turistas en Tenerife, Gran Canaria y La Palma.
+  * `fire-events`
+  * `weather-events`
 
-Problema: Un satélite detecta un incendio en La Palma. ¿Debes evacuar el hotel?
+---
 
-Tu Solución: Depende del viento. Si el fuego está a 20km pero el viento sopla hacia el hotel, es peligroso. Si sopla al revés, no.
+### 2️ Stream Processing (Silver Layer)
 
-Eco-Pulse: Ingesta el dato del fuego, le pregunta a una API de clima "qué tiempo hace justo en esa coordenada", calcula el riesgo y lo guarda para análisis histórico.
+* Spark Structured Streaming consumes Kafka topics
+* Performs:
 
-2. Arquitectura de Datos (El "Medallion Architecture")
+  * Data cleansing
+  * Enrichment
+  * Normalization
+* Writes transactional Delta tables
+* Fault tolerance via **checkpointing**
 
-No vamos a guardar datos a lo loco. Vamos a usar la arquitectura Medallion (Bronce, Plata, Oro) que es el estándar de la industria (Databricks).
+---
 
-Getty Images
+### 3️ Risk Engine (Gold Layer)
 
-Capa Bronze (Raw): Los datos tal cual llegan de la NASA y OpenWeather (sucios, JSONs anidados).
+* Batch Spark job computes:
 
-Capa Silver (Cleansed): Datos limpios, deduplicados y con tipos correctos (Fechas como Datetime, Coordenadas como Float).
+  * Distance between fire coordinates and weather stations
+  * Wind vector influence
+* Applies the **30-30-30 rule** to assign risk levels:
 
-Capa Gold (Business): Datos agregados. Ejemplo: "Tabla de Riesgo Diario por Isla".
+  * Moderate
+  * High
+  * Very High
+  * Extreme
 
-3. Las Tecnologías (Tu Stack)
+---
 
-Aquí está el arsenal que vas a usar. Cada una tiene una función específica:
+### 4️ Visualization
 
-ComponenteTecnologíaFunción (El "Por qué")IngestaPython + Apache KafkaPara desacoplar la velocidad de entrada (satélites) de la velocidad de proceso. Kafka actúa de "buffer".ProcesamientoApache Spark (PySpark)El motor. Permite hacer Streaming Joins (unir fuego + viento en movimiento).AlmacenamientoDelta LakeFormato de archivo open source que permite ACID transactions sobre archivos Parquet. Es la magia del Lakehouse.Cloud StorageMinIO (Local) / AWS S3Donde se guardan los archivos físicos. MinIO simula S3 en tu PC para que sea gratis.OrquestaciónDocker ComposePara levantar toda la infraestructura (6 contenedores) con un comando.VisualizaciónStreamlitPara pintar el mapa con los puntos de fuego y vectores de viento.4. Las APIs y Datos Reales 📡
+* Streamlit app queries Gold Delta tables
+* Uses native Delta reader for high performance
+* Renders a **3D geospatial wildfire risk dashboard**
 
-Vas a beber de dos fuentes públicas increíbles:
+---
 
-A. NASA FIRMS (Fire Information for Resource Management System)
+##  Setup & Installation
 
-Qué es: Datos casi en tiempo real (NRT) de los satélites MODIS y VIIRS.
+### Prerequisites
 
-El Dato: Te da Latitud, Longitud, Confidence (0-100% probabilidad de que sea fuego) y Frp (Fire Radiative Power - la intensidad del fuego).
+* Docker Desktop **4.0+**
+* Python **3.10+**
+* Git
 
-Acceso: Gratis. Te registras y te dan una MAP_KEY.
+---
 
-Formato: CSV o WMS.
+### 1️ Clone the Repository
 
-B. OpenWeatherMap (API)
+```bash
+git clone https://github.com/rauljimenezdelgado/eco-pulse-lakehouse.git
+cd eco-pulse-lakehouse
+```
 
-Qué es: Datos meteorológicos hiper-locales.
+---
 
-El Dato: Te interesa wind_speed (velocidad) y wind_deg (dirección en grados).
+### 2️ Environment Configuration
 
-La Lógica: Cuando recibes un fuego en Lat: 28.0, Lon: -15.5, tu script llama a esta API preguntando: "¿Qué viento hace AHORA MISMO en 28.0, -15.5?".
+Create a `.env` file in the project root:
 
-5. El Flujo de Trabajo (Pipeline) 🔄
+```bash
+NASA_MAP_KEY=your_nasa_firms_key
+OPENWEATHER_API_KEY=your_openweather_key
+KAFKA_BOOTSTRAP_SERVERS=localhost:9092
+```
 
-Así es como viaja el dato dentro de tu ordenador:
+---
 
-The Producer (Python):
+### 3️ Deploy Infrastructure
 
-Consulta a la NASA: "¿Nuevos fuegos en Europa?"
+Start Kafka, Spark, and MinIO services:
 
-Por cada fuego detectado, consulta a OpenWeather: "¿Viento en esta zona?"
+```bash
+docker-compose up -d
+```
 
-Empaqueta todo en un JSON: {"lat": 28.1, "lon": -15.4, "wind": 30kmh, "risk": "HIGH"}.
+---
 
-Lo envía al Topic de Kafka fire-risk-events.
+### 4️ Run the Data Pipeline
 
-The Stream Processor (Spark):
+#### Step A — Start Producers
 
-Lee de Kafka constantemente.
+```bash
+# Terminal 1
+python src/ingestion/nasa_producer.py
 
-Silver Logic: Convierte el JSON a columnas, filtra fuegos con confidence < 50%.
+# Terminal 2
+python src/ingestion/weather_producer.py
+```
 
-Escribe en MinIO en formato delta (Ruta: s3a://lakehouse/silver/fire_events).
+---
 
-The Analytics (Spark SQL / Streamlit):
+#### Step B — Start Streaming Processor (Silver Layer)
 
-Lee la tabla Delta.
+```bash
+spark-submit \
+  --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.0,io.delta:delta-spark_2.12:3.0.0,org.apache.hadoop:hadoop-aws:3.3.4 \
+  src/processing/fire_risk_processor.py
+```
 
-Muestra en el mapa los puntos rojos (fuego) y flechas azules (dirección del humo).
+---
 
-6. ¿Por qué esto es "Nivel Dios"?
+#### Step C — Run Risk Engine (Gold Layer)
 
-Streaming Join: Unir dos fuentes de datos en tiempo real es difícil. Pocos juniors saben hacerlo.
+```bash
+spark-submit \
+  --packages io.delta:delta-spark_2.12:3.0.0,org.apache.hadoop:hadoop-aws:3.3.4 \
+  src/processing/gold_batch_job.py
+```
 
-Delta Lake: Al usar Delta, puedes hacer "Time Travel". En la entrevista podrás decir: "Podemos consultar el estado del incendio tal y como estaba ayer a las 18:00, aunque los datos hayan cambiado hoy".
+---
 
-Escalabilidad: Si mañana en lugar de Europa quieres monitorizar el mundo entero, tu arquitectura aguanta. Solo tienes que añadir más "Workers" a Spark.
+### 5️ Launch Dashboard
 
-Datos Reales: Usarás los satélites de la NASA (FIRMS) y OpenWeather. Son datos que salvan vidas y son públicos.
-----
+```bash
+streamlit run src/visualization/app.py
+```
 
-1. ¿Por qué este proyecto es "Gold Standard" para tu CV?
-Tu propuesta toca las tres "Vs" del Big Data (Volumen, Velocidad, Variedad) y demuestra competencias clave:
+Access the UI at: **[http://localhost:8501](http://localhost:8501)**
 
-Arquitectura Moderna: El uso de Delta Lake y la arquitectura Medallion es exactamente lo que empresas como Databricks, Microsoft y grandes bancos están implementando ahora mismo. Te alejas del Data Warehouse tradicional y entras en el mundo del Lakehouse.
+---
 
-Desacoplamiento: Entender que Kafka actúa como buffer para que el sistema no colapse si la NASA envía millones de datos de golpe es un concepto de System Design fundamental.
+##  Key Engineering Concepts
 
-Problema Real: La narrativa de "TUI en Canarias" es brillante. Consejo de oro: En las entrevistas, empieza SIEMPRE por el problema de negocio (salvar vidas/turismo), no por el código.
+* **Decoupling:** Kafka absorbs ingestion bursts from satellite feeds
+* **ACID Transactions:** Delta Lake guarantees consistency under concurrent workloads
+* **Geospatial Analytics:** Distributed Haversine / Euclidean distance calculations
+* **Fault Tolerance:** Spark checkpointing enables exactly-once recovery
+* **Time Travel:** Delta Lake allows historical queries for auditing and replay
 
+---
 
-Getty Images
-2. Análisis Técnico y Ajustes de "Nivel Experto"
-Aunque el plan es excelente, quiero afinar un par de tuercas para que cuando te entreviste un Senior Staff Engineer, no te pille en renuncio.
+##  Future Enhancements
 
-A. La Trampa del "Streaming Join" (Importante)
-En tu descripción dices:
+* Machine Learning–based fire spread prediction
+* Alerting system (SMS / email / webhook)
+* Integration with civil protection APIs
+* Multi-region cloud deployment
 
-Producer: Consulta NASA -> Consulta Weather -> Empaqueta JSON -> Envía a Kafka.
+---
 
-Spark: Lee Kafka -> Procesa.
-
-Ojo con la terminología: Tal como lo describes en el paso 1, NO estás haciendo un Streaming Join en Spark. Estás haciendo Enriquecimiento en la Ingesta (Ingestion Enrichment). El dato ya llega unido a Spark.
-
-Opción A (La que describes - Más fácil y robusta): Es válida. Reduces complejidad en Spark, pero aumentas latencia en el productor (si la API del clima falla, pierdes el dato del fuego o se bloquea el script).
-
-Opción B (El verdadero "Nivel Dios" - Streaming Join):
-
-Producer 1: Envía datos de Fuego al Topic fire-events.
-
-Producer 2: Envía datos de Clima al Topic weather-events.
-
-Spark: Lee ambos topics y los une en tiempo real basándose en coordenadas geográficas (geo-spatial join) o tiempo.
-
-Veredicto: Si quieres vender "Streaming Joins" en la entrevista, ve por la Opción B. Si quieres vender "Robustez", quédate con la A, pero llámalo "Enriquecimiento pre-ingesta".
-
-B. El Eslabón Perdido: Orquestación y Calidad
-Tu stack es bueno, pero le faltan dos piezas para ser un entorno productivo real:
-
-Calidad del Dato (Data Quality):
-
-¿Qué pasa si la NASA envía una latitud 999? Tu pipeline explotará o ensuciará la capa Silver.
-
-Acción: Implementa Great Expectations (librería Python) dentro de tu pipeline de Spark o como paso intermedio para validar que los datos cumplen las reglas antes de pasar a Silver.
-
-Orquestación (El que manda):
-
-Mencionas Docker Compose (infraestructura), pero ¿quién dispara los scripts?
-
-Para un proceso de Streaming continuo, Spark corre siempre. Pero para mantenimientos o procesos batch (ej: compactar archivos Delta pequeños en uno grande - VACUUM), necesitas un orquestador.
-
-Acción: Considera añadir Airflow o Mage.ai (más moderno) para orquestar la limpieza del Lakehouse.
-
-3. Hoja de Ruta para Construirlo (Plan de Mentor)
-No intentes hacerlo todo a la vez. Sigue este orden para no frustrarte:
-
-Fase 1: El MVP (Minimum Viable Pipeline)
-
-Script Python simple que lee NASA API y guarda en un CSV local.
-
-Levantar Kafka y Zookeeper con Docker.
-
-Hacer que el script envíe al topic de Kafka.
-
-Fase 2: El Motor Spark
-
-Levantar Spark y MinIO con Docker.
-
-Script PySpark que lee de Kafka y escribe en consola (console sink).
-
-Cambiar la escritura de consola a MinIO (formato Delta).
-
-Fase 3: La Lógica de Negocio (Medallion)
-
-Implementar la separación Bronze (Raw) -> Silver (Clean) -> Gold (Aggregated).
-
-Aquí es donde aplicas la lógica de "Risk = High/Low".
-
-Fase 4: La Capa Visual
-
-Conectar Streamlit a la tabla Delta (Gold) y pintar el mapa.
-
-4. Simulación de Entrevista: ¿Cómo defenderlo?
-Cuando te pregunten por este proyecto, usa este guion:
-
-Entrevistador: "Cuéntame sobre el proyecto Eco-Pulse."
-
-Tú: "Lo construí porque quería resolver un problema de latencia en la toma de decisiones de seguridad turística.
-
-El Reto: Detectar incendios y correlacionarlos con el viento en tiempo real para evaluar riesgos de evacuación.
-
-La Arquitectura: Elegí una arquitectura Lakehouse sobre Delta Lake para garantizar transacciones ACID. Utilicé Kafka para desacoplar la ingesta de la NASA del procesamiento, lo que me permite escalar los productores sin tocar el cluster de Spark.
-
-La decisión técnica más difícil: Fue elegir dónde hacer el cruce de datos. Decidí hacerlo [en la ingesta / en Spark] porque [razón de latencia / razón de escalabilidad].
-
-El resultado: Un dashboard en Streamlit que actualiza el riesgo cada X segundos, con capacidad de 'Time Travel' para auditorías forenses gracias a Delta."
-
-
-Tu intuición es correcta, pero vamos a precisar un detalle técnico importante: Spark NO habla con los Producers.
-
-El flujo es así:
-
-NASA Producer: "¡Tengo un incendio!" -> Lo lanza al buzón de Kafka (topic: fire-events).
-
-Weather Producer: "¡Tengo viento!" -> Lo lanza al buzón de Kafka (topic: weather-events).
-
-(Aquí los datos esperan en el buzón hasta que alguien los recoja).
-
-Spark (Processor): Va al buzón de Kafka constantemente, recoge las cartas nuevas, las limpia (les pone tipos de datos correctos, timestamps, etc.) y las archiva ordenadas en MinIO (Tu Data Lake).
-
-Así que sí: Spark recoge de Kafka y guarda en MinIO.
-
-3. El Orden de Encendido (El Protocolo de Arranque) 🚦
-En un sistema desacoplado (gracias a Kafka), el orden no es estricto (no explota si lo haces mal), pero el orden lógico profesional es este:
-
-PASO 1: La Infraestructura (El Suelo)
-
-Terminal 1: docker-compose up -d
-
-Sin esto, no hay buzón (Kafka) ni archivo (MinIO).
-
-PASO 2: La Ingesta (Los Proveedores)
-
-Terminal 2: python src/ingestion/nasa_producer.py
-
-Terminal 3: python src/ingestion/weather_producer.py
-
-Estos empiezan a llenar Kafka de datos. Si Spark está apagado, no pasa nada, Kafka guarda los mensajes (por defecto hasta 7 días).
-
-silver/: Aquí viven tus datos. Si entras, verás archivos .parquet (y carpetas _delta_log). Son tus datos de incendios y clima guardados en un formato comprimido y optimizado para Big Data.
-
-checkpoints/: Esta es la "memoria" de Spark. Como es un proceso continuo, Spark apunta aquí qué mensajes ya ha leído. Si se va la luz y reinicias el script, Spark mirará aquí y dirá: "Me quedé en el mensaje 502", y seguirá desde ahí sin duplicar datos. Esto es la tolerancia a fallos.
+> **Eco-Pulse Lakehouse** demonstrates production-grade data engineering principles applied to real-world environmental risk monitoring.
